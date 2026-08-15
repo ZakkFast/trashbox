@@ -2,9 +2,12 @@
 ui_scale = 1.2
 
 [bar.default]
+background_opacity = 0.87999998033046722
 center = [ "workspaces", "spacer_1", "active_window" ]
 concave_edge_corners = true
-end = [ "group:g1", "media", "spacer_1", "tray", "notifications", "network", "volume", "session" ]
+end = [ "group:g1", "media", "spacer_1", "tray", "network", "volume", "session" ]
+font_family = "MesloLGL Nerd Font"
+font_weight = 400
 margin_edge = 0
 margin_ends = 0
 radius_bottom_left = 12
@@ -12,8 +15,8 @@ radius_bottom_right = 12
 radius_top_left = 0
 radius_top_right = 0
 scale = 1.1000000000000001
-start = [ "launcher", "clock", "spacer_2" ]
-thickness = 35
+start = [ "launcher", "clock", "spacer_2", "notifications" ]
+thickness = 32
 
     [[bar.default.capsule_group]]
     border = ""
@@ -23,10 +26,15 @@ thickness = 35
     opacity = 1.0
     padding = 6.0
 
+[lockscreen]
+blur_intensity = 0.0
+fingerprint = false
+tint_intensity = 0.17999999597668648
+
 [lockscreen_widgets]
-enabled = false
+enabled = true
 schema_version = 2
-widget_order = [ "lockscreen-login-box@DP-2" ]
+widget_order = [ "lockscreen-login-box@DP-2", "lockscreen-widget-0000000000000001" ]
 
     [lockscreen_widgets.grid]
     cell_size = 16
@@ -57,6 +65,24 @@ widget_order = [ "lockscreen-login-box@DP-2" ]
         show_session_buttons = true
         show_unlock_hint = true
         show_weather = true
+
+    [lockscreen_widgets.widget.lockscreen-widget-0000000000000001]
+    box_height = 128.0
+    box_width = 432.0
+    cx = 1720.0
+    cy = 144.0
+    output = "DP-2"
+    rotation = 0.0
+    type = "clock"
+
+        [lockscreen_widgets.widget.lockscreen-widget-0000000000000001.settings]
+        background = true
+        background_opacity = 0.80000000000000004
+        background_radius = 6
+        clock_style = "digital"
+        color = "primary"
+        font_family = "FantasqueSansM Nerd Font Propo"
+        shadow = true
 
 [shell]
 clipboard_image_action_command = "satty -f -"
@@ -155,6 +181,7 @@ enabled = false
 
 [widget.notifications]
 color = "secondary"
+hide_when_no_unread = true
 
 [widget.session]
 color = "error"
