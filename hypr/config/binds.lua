@@ -129,6 +129,12 @@ hl.bind(mainMod .. " + V", hl.dsp.exec_cmd(noctCall .. "panel-toggle clipboard")
 -- Notifications
 hl.bind(mainMod .. " + A", hl.dsp.exec_cmd(noctCall .. "panel-toggle control-center notifications"))
 
+-- Toggle ComfyUI
+hl.bind(
+    mainMod .. " + SHIFT + G",
+    hl.dsp.exec_cmd(home .. "/dotfiles/scripts/comfy -toggle")
+)
+
 -------------------------------
 ---- WORKSPACES & MONITORS ----
 -------------------------------

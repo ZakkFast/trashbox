@@ -3,22 +3,38 @@
 case "$1" in
     -start)
         systemctl --user start comfyui.service
+        systemctl --user start comfyui-window.service
         ;;
 
     -stop)
+        systemctl --user stop comfyui-window.service
         systemctl --user stop comfyui.service
         ;;
 
     -restart)
         systemctl --user restart comfyui.service
+        systemctl --user restart comfyui-window.service
+        ;;
+
+    -toggle)
+        if systemctl --user is-active --quiet comfyui.service; then
+            systemctl --user stop comfyui-window.service
+            systemctl --user stop comfyui.service
+        else
+            systemctl --user start comfyui.service
+            systemctl --user start comfyui-window.service
+        fi
         ;;
 
     -status)
-        systemctl --user status comfyui.service --no-pager
+        echo "Backend:"
+        systemctl --user is-active comfyui.service
+        echo "Window:"
+        systemctl --user is-active comfyui-window.service
         ;;
 
     *)
-        echo "Usage: comfy {-start|-stop|-restart|-status}"
+        echo "Usage: comfy {-start|-stop|-restart|-toggle|-status}"
         exit 1
         ;;
 esac

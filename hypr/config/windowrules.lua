@@ -13,40 +13,65 @@ hl.window_rule({
 })
 
 -- Gaming
-local gamingApps = "^(steam_app.*|gamescope)$"
-local gamingWorkspace = "name:gaming"
+local gamingWorkspace = "4 silent"
+local gamingApps = "^(steam|steam_app.*|gamescope|net\\.lutris\\.Lutris)$"
 
-hl.window_rule({ match = { content = "game" }, workspace = gamingWorkspace })
-hl.window_rule({ match = { xdg_tag = "^(.*game.*)$" }, workspace = gamingWorkspace, fullscreen_state = 2, content = "game", sync_fullscreen = true })
-hl.window_rule({ match = { class = gamingApps }, workspace = gamingWorkspace })
-hl.window_rule({ match = { class = "^(steam)$", title = "^(Friends List)$" }, float = true })
-hl.window_rule({ match = { class = "^(steam)$", title = "^(Launching\\.{3})$" }, float = true, center = true, workspace = gamingWorkspace })
+hl.window_rule({
+    match = { content = "game" },
+    workspace = gamingWorkspace,
+})
+
+hl.window_rule({
+    match = { xdg_tag = "^(.*game.*)$" },
+    workspace = gamingWorkspace,
+    fullscreen_state = 2,
+    content = "game",
+    sync_fullscreen = true,
+})
+
+hl.window_rule({
+    match = { class = gamingApps },
+    workspace = gamingWorkspace,
+})
+
+hl.window_rule({
+    match = { class = "^(steam)$", title = "^(Friends List)$" },
+    float = true,
+})
+
+hl.window_rule({
+    match = { class = "^(steam)$", title = "^(Launching\\.\\.\\.)$" },
+    float = true,
+    center = true,
+    workspace = gamingWorkspace,
+})
+
 hl.window_rule({
     match = {
-        class         = gamingApps,
-        title         = "^(.+)$",
+        class = "^(steam_app.*|gamescope)$",
+        title = "^(.+)$",
         initial_title = "negative:^(.*\\\\home\\\\.*)$",
     },
-    content          = "game",
-    decorate         = false,
+    content = "game",
+    decorate = false,
     fullscreen_state = 2,
-    size             = { "monitor_w", "monitor_h" },
-    sync_fullscreen  = true,
+    size = { "monitor_w", "monitor_h" },
+    sync_fullscreen = true,
 })
+
 hl.window_rule({
     match = {
-        class         = "^(steam_app.*)$",
+        class = "^(steam_app.*)$",
         initial_title = "^$",
     },
-    center           = true,
-    float            = true,
-    fullscreen       = false,
+    center = true,
+    float = true,
+    fullscreen = false,
     fullscreen_state = 0,
-    workspace        = gamingWorkspace,
+    workspace = gamingWorkspace,
 })
 
 -- Apps
-hl.window_rule({ match = { class = "^(.*\\.exe)$", float = true }, monitor = PRIMARY_MONITOR, center = true, fullscreen_state = 0 })
 hl.window_rule({ match = { class = "^(.*[Ll]auncher.*)$" }, float = true, monitor = PRIMARY_MONITOR })
 hl.window_rule({ match = { class = "^(vesktop|discord)$" }, monitor = PRIMARY_MONITOR })
 hl.window_rule({ match = { class = "^(.*[Cc]alc.*)$" }, float = true, size = { "max(monitor_w, monitor_h)*0.17", "min(monitor_w, monitor_h)*0.43" } })
@@ -67,6 +92,30 @@ hl.window_rule({
     },
 })
 
+-- Workspace routing
+local appWorkspaces = {
+    -- DEV
+    { class = "^(code)$", workspace = "1 silent" },
+
+    -- SERVER
+    { class = "^(DBeaver)$", workspace = "2 silent" },
+
+    -- NOT_PORN
+    { class = "^(firefox|chromium|vesktop)$", workspace = "3 silent" },
+
+    -- GAMING
+    { class = "^(net\\.lutris\\.Lutris)$", workspace = "4 silent" },
+
+    -- OTHER
+    { class = "^(org\\.qbittorrent\\.qBittorrent|vlc)$", workspace = "6 silent" },
+}
+
+for _, app in ipairs(appWorkspaces) do
+    hl.window_rule({
+        match = { class = app.class },
+        workspace = app.workspace,
+    })
+end
 
 -- ComfyUI
 hl.window_rule({
