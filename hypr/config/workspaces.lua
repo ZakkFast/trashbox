@@ -34,5 +34,12 @@ hl.workspace_rule({
     workspace = "5",
     monitor = MONITOR1,
     persistent = true,
-    default_name = "BRAIN_ROT",
+    default_name = "COMFY",
+})
+
+hl.workspace_rule({
+    workspace = "6",
+    monitor = MONITOR1,
+    persistent = true,
+    default_name = "OTHER",
 })

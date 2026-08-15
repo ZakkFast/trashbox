@@ -67,6 +67,20 @@ hl.window_rule({
     },
 })
 
+
+-- ComfyUI
+hl.window_rule({
+    match = { class = "^chrome-127\\.0\\.0\\.1__-Default$" },
+    workspace = "5 silent",
+})
+hl.window_rule({
+    match = { title = "^ComfyUI Logs$" },
+    workspace = "special:comfylogs",
+    float = true,
+    size = { "monitor_w*0.80", "monitor_h*0.55" },
+    center = true,
+})
+
 -- Opacity Overrides
 local terminals = "^(kitty|ghostty|[Kk]onsole|Alacritty|gnome-terminal|xfce[0-9]?-terminal)$"
 

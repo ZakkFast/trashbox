@@ -13,5 +13,12 @@ require("config.monitors")
 require("config.windowrules")
 require("config.workspaces")
 
+-- Apply Noctalia colors when the generated theme exists
+local noctalia_ok, noctalia = pcall(require, "noctalia")
+
+if noctalia_ok then
+    noctalia.apply_theme()
+end
+
 -- For Noctalia Color templates
 require("noctalia").apply_theme()

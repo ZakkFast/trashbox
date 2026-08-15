@@ -7,10 +7,10 @@ EDITOR       = "gnome-text-editor --new-window"
 CALCULATOR   = "gnome-calculator"
 
 -- Monitors
-MONITOR1 = "DP-2"
+MONITOR1 = "DP-3"
 MONITOR2 = ""
 MONITOR3 = ""
 PRIMARY_MONITOR = MONITOR1
 
 -- Workspaces
-NUM_WPM = 5 -- Number of workspaces per monitor (Max 10)
+NUM_WPM = 6 -- Number of workspaces per monitor (Max 10)

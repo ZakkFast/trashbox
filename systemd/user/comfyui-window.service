@@ -1,0 +1,12 @@
+[Unit]
+Description=ComfyUI App Window
+After=comfyui.service graphical-session.target
+Wants=comfyui.service
+
+[Service]
+Type=simple
+ExecStartPre=/bin/sh -c 'until /usr/bin/curl -sf http://127.0.0.1:8188 >/dev/null; do sleep 1; done'
+ExecStart=/usr/bin/chromium --app=http://127.0.0.1:8188 --user-data-dir=%h/.local/share/comfyui-browser
+
+[Install]
+WantedBy=default.target

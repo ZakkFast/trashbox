@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+# If the log window already exists, just show/hide its special workspace.
+if hyprctl clients | grep -qE '^[[:space:]]*title: ComfyUI Logs$'; then
+    hyprctl dispatch 'hl.dsp.workspace.toggle_special("comfylogs")'
+    exit 0
+fi
+
+# Otherwise create it.
+kitty \
+    --title "ComfyUI Logs" \
+    journalctl --user -u comfyui.service -n 200 -f \
+    >/dev/null 2>&1 &
+
+# Wait briefly for Hyprland to see the window, then show the scratchpad.
+for i in {1..20}; do
+    if hyprctl clients | grep -qE '^[[:space:]]*title: ComfyUI Logs$'; then
+        hyprctl dispatch 'hl.dsp.workspace.toggle_special("comfylogs")'
+        exit 0
+    fi
+
+    sleep 0.1
+done

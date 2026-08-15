@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+case "$1" in
+    -start)
+        systemctl --user start comfyui.service
+        ;;
+
+    -stop)
+        systemctl --user stop comfyui.service
+        ;;
+
+    -restart)
+        systemctl --user restart comfyui.service
+        ;;
+
+    -status)
+        systemctl --user status comfyui.service --no-pager
+        ;;
+
+    *)
+        echo "Usage: comfy {-start|-stop|-restart|-status}"
+        exit 1
+        ;;
+esac
