@@ -1,1 +1,6 @@
 hypr/noctalia.lua
+.env
+.env.*
+!.env.example
+*.pem
+*.key

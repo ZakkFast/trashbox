@@ -1,0 +1,201 @@
+[accessibility]
+ui_scale = 1.2
+
+[bar.default]
+center = [ "workspaces", "spacer_1", "active_window" ]
+concave_edge_corners = true
+end = [ "group:g1", "media", "spacer_1", "tray", "notifications", "network", "volume", "session" ]
+margin_edge = 0
+margin_ends = 0
+radius_bottom_left = 12
+radius_bottom_right = 12
+radius_top_left = 0
+radius_top_right = 0
+scale = 1.1000000000000001
+start = [ "launcher", "clock", "spacer_2" ]
+thickness = 35
+
+    [[bar.default.capsule_group]]
+    border = ""
+    fill = "on_secondary"
+    id = "g1"
+    members = [ "temp", "sysmon_2", "sysmon_3" ]
+    opacity = 1.0
+    padding = 6.0
+
+[lockscreen_widgets]
+enabled = false
+schema_version = 2
+widget_order = [ "lockscreen-login-box@DP-2" ]
+
+    [lockscreen_widgets.grid]
+    cell_size = 16
+    major_interval = 4
+    visible = true
+
+    [lockscreen_widgets.widget."lockscreen-login-box@DP-2"]
+    box_height = 196.0
+    box_width = 810.0
+    cx = 1720.0
+    cy = 1258.0
+    output = "DP-2"
+    rotation = 0.0
+    type = "login_box"
+
+        [lockscreen_widgets.widget."lockscreen-login-box@DP-2".settings]
+        background_color = "surface_variant"
+        background_opacity = 0.88
+        background_radius = 12.0
+        center_password_text = false
+        input_opacity = 1.0
+        input_radius = 6.0
+        layout = "regular"
+        show_caps_lock = true
+        show_keyboard_layout = true
+        show_login_button = true
+        show_media = true
+        show_session_buttons = true
+        show_unlock_hint = true
+        show_weather = true
+
+[shell]
+clipboard_image_action_command = "satty -f -"
+launch_apps_as_systemd_services = true
+polkit_agent = true
+settings_show_advanced = true
+
+    [shell.greeter_sync]
+    auto_sync = true
+    privilege_command = "sudo -n"
+
+    [shell.panel]
+    open_near_click_control_center = true
+    session_placement = "floating"
+    session_position = "center"
+
+    [shell.screenshot]
+    copy_to_clipboard = false
+    pipe_command = "satty -f -"
+    pipe_to_command = true
+    save_to_file = false
+
+    [[shell.session.actions]]
+    action = "lock"
+    countdown_seconds = 0.0
+    enabled = true
+    shortcut = "1"
+    variant = "default"
+
+    [[shell.session.actions]]
+    action = "logout"
+    countdown_seconds = 0.0
+    enabled = true
+    shortcut = "2"
+    variant = "default"
+
+    [[shell.session.actions]]
+    action = "lock_and_suspend"
+    countdown_seconds = 3.0
+    enabled = true
+    shortcut = "3"
+    variant = "default"
+
+    [[shell.session.actions]]
+    action = "reboot"
+    countdown_seconds = 3.0
+    enabled = true
+    shortcut = "4"
+    variant = "default"
+
+    [[shell.session.actions]]
+    action = "shutdown"
+    countdown_seconds = 3.0
+    enabled = true
+    shortcut = "5"
+    variant = "destructive"
+
+[system.monitor]
+gpu_poll_seconds = 2
+
+[theme]
+mode = "dark"
+source = "wallpaper"
+wallpaper_scheme = "m3-tonal-spot"
+
+    [theme.templates]
+    builtin_ids = [ "alacritty", "btop", "gtk3", "gtk4", "hyprland", "kcolorscheme", "kitty", "qt" ]
+
+[wallpaper.default]
+path = "/home/z/Pictures/Wallpapers/lofi-girl-dreams-3840x2160-14891.jpeg"
+
+[wallpaper.last]
+path = "/home/z/Pictures/Wallpapers/lofi-girl-dreams-3840x2160-14891.jpeg"
+
+[wallpaper.monitors.DP-2]
+path = "/home/z/Pictures/Wallpapers/lofi-girl-dreams-3840x2160-14891.jpeg"
+
+[widget.active_window]
+enabled = false
+
+[widget.clock]
+color = "secondary"
+format = "{:%-I:%M | %A | %b %-d %y}"
+
+[widget.launcher]
+color = "secondary"
+enabled = false
+
+[widget.media]
+hide_when_no_media = true
+title_scroll = "on_hover"
+
+[widget.network]
+color = "secondary"
+enabled = false
+
+[widget.notifications]
+color = "secondary"
+
+[widget.session]
+color = "error"
+
+[widget.spacer_1]
+enabled = false
+type = "spacer"
+
+[widget.spacer_2]
+type = "spacer"
+
+[widget.sysmon_2]
+glyph = "gpu-usage"
+show_value = false
+stat = "gpu_temp"
+type = "sysmon"
+
+[widget.sysmon_3]
+glyph = "cpu-2"
+stat = "ram_used"
+type = "sysmon"
+
+[widget.temp]
+show_label = false
+
+[widget.tray]
+capsule = true
+capsule_fill = "on_secondary"
+
+[widget.volume]
+color = "secondary"
+enabled = false
+
+[widget.workspaces]
+active_pill_size = 2.5
+capsule = true
+capsule_fill = "surface"
+inactive_pill_size = 1.0
+label_source = "name"
+max_label_chars = 12
+occupied_color = "on_surface_variant"
+pill_scale = 0.80000000000000004
+show_labels = true
+style = "minimal"
