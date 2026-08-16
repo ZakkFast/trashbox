@@ -89,6 +89,7 @@ PACMAN_PACKAGES=(
 
     # Networking / sync
     networkmanager
+    ufw
     proton-vpn-gtk-app
     gnome-keyring
     syncthing
