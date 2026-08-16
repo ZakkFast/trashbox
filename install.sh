@@ -92,7 +92,6 @@ read -rp "Configure development runtimes? [Y/n] " install_runtimes
 read -rp "Configure system services? [Y/n] " install_services
 read -rp "Configure Noctalia? [Y/n] " install_noctalia
 read -rp "Install/configure ComfyUI? [Y/n] " install_comfyui
-read -rp "Reboot automatically when bootstrap completes? [y/N] " reboot_now
 
 echo
 info "Selections recorded. Starting bootstrap..."
@@ -160,11 +159,12 @@ echo
 
 success "Workstation configuration finished"
 
+echo
+read -rp "Reboot now? [y/N] " reboot_now
+
 if [[ "$reboot_now" =~ ^[Yy]$ ]]; then
-    echo
     info "Rebooting..."
     sudo systemctl reboot
 else
-    echo
     info "Reboot skipped"
 fi
