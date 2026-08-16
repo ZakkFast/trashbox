@@ -50,9 +50,11 @@ command -v pacman >/dev/null 2>&1 || fail "pacman was not found."
 command -v sudo >/dev/null 2>&1 || fail "sudo was not found."
 command -v lspci >/dev/null 2>&1 || fail "lspci was not found."
 
-if ! lspci | grep -Eiq 'AMD|ATI'; then
-    fail "No AMD display device was found by lspci."
+PCI_DEVICES="$(lspci -nnk)"
+if [[ "$PCI_DEVICES" != *"[1002:7550]"* ]]; then
+    fail "RX 9070 XT (PCI ID 1002:7550) was not found by lspci."
 fi
+ok "RX 9070 XT detected"
 
 info "Installing Vulkan/build dependencies (safe to rerun)..."
 CURRENT_STAGE="package installation"
