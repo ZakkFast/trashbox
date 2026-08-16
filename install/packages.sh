@@ -15,6 +15,7 @@ PACMAN_PACKAGES=(
     uwsm
     noctalia
     hyprpicker
+    satty
     wl-clipboard
     pavucontrol
     playerctl
