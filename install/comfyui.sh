@@ -186,11 +186,12 @@ mkdir -p "$SYSTEMD_DIR"
 COMFY_ARGS="--enable-manager"
 
 if [[ "$GPU_VENDOR" == "amd" ]]; then
+    COMFY_ARGS+=" --lowvram"
     COMFY_ARGS+=" --disable-pinned-memory"
     COMFY_ARGS+=" --disable-async-offload"
     COMFY_ARGS+=" --disable-smart-memory"
     COMFY_ARGS+=" --disable-dynamic-vram"
-    COMFY_ARGS+=" --reserve-vram 0.5"
+    COMFY_ARGS+=" --reserve-vram 2"
 fi
 
 cat > "$SYSTEMD_DIR/comfyui.service" <<EOF
