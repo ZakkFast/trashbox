@@ -1,23 +1,144 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -Eeuo pipefail
 
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOSTNAME="$(hostname)"
 USER_NAME="$(whoami)"
+CURRENT_STAGE="preflight"
+SUDO_KEEPALIVE_PID=""
 
-# ---------- output helpers ----------
+# ---------- colors / output ----------
+
+RESET=$'\033[0m'
+BOLD=$'\033[1m'
+DIM=$'\033[2m'
+RED=$'\033[1;31m'
+GREEN=$'\033[1;32m'
+YELLOW=$'\033[1;33m'
+BLUE=$'\033[1;34m'
+MAGENTA=$'\033[1;35m'
+CYAN=$'\033[1;36m'
 
 info() {
-    printf '\033[1;34m[INFO]\033[0m %s\n' "$1"
+    printf '%b[INFO]%b %s\n' "$BLUE" "$RESET" "$1"
 }
 
 success() {
-    printf '\033[1;32m[ OK ]\033[0m %s\n' "$1"
+    printf '%b[ OK ]%b %s\n' "$GREEN" "$RESET" "$1"
+}
+
+warn() {
+    printf '%b[WARN]%b %s\n' "$YELLOW" "$RESET" "$1"
 }
 
 error() {
-    printf '\033[1;31m[FAIL]\033[0m %s\n' "$1" >&2
+    printf '%b[FAIL]%b %s\n' "$RED" "$RESET" "$1" >&2
+}
+
+banner() {
+    local title="$1"
+
+    echo
+    printf '%b╭──────────────────────────────────────────────╮%b\n' "$MAGENTA" "$RESET"
+    printf '%b│%b %-44s %b│%b\n' "$MAGENTA" "$RESET" "$title" "$MAGENTA" "$RESET"
+    printf '%b╰──────────────────────────────────────────────╯%b\n' "$MAGENTA" "$RESET"
+    echo
+}
+
+section() {
+    printf '\n%b◆ %s%b\n' "$CYAN" "$1" "$RESET"
+}
+
+# ---------- cleanup / error handling ----------
+
+cleanup() {
+    if [[ -n "$SUDO_KEEPALIVE_PID" ]]; then
+        kill "$SUDO_KEEPALIVE_PID" >/dev/null 2>&1 || true
+        wait "$SUDO_KEEPALIVE_PID" 2>/dev/null || true
+    fi
+}
+
+handle_error() {
+    local exit_code="$1"
+    local line_no="$2"
+    local command="$3"
+
+    trap - ERR
+
+    echo
+    error "Bootstrap failed during: $CURRENT_STAGE"
+    error "Command: $command"
+    error "Exit code: $exit_code (line $line_no)"
+    echo
+    error "Fix the issue, then rerun the installer. Completed stages are safe to run again."
+
+    exit "$exit_code"
+}
+
+trap cleanup EXIT
+trap 'handle_error "$?" "$LINENO" "$BASH_COMMAND"' ERR
+
+# ---------- prompt helpers ----------
+
+prompt_yes_no() {
+    local -n target="$1"
+    local label="$2"
+    local default="${3:-yes}"
+    local hint answer
+
+    if [[ "$default" == "yes" ]]; then
+        hint="Y/n"
+    else
+        hint="y/N"
+    fi
+
+    printf '%b  ◆%b %-39s %b[%s]%b ' "$CYAN" "$RESET" "$label" "$DIM" "$hint" "$RESET"
+    IFS= read -r answer
+
+    if [[ "$default" == "yes" ]]; then
+        if [[ "$answer" =~ ^[Nn]$ ]]; then
+            target="no"
+        else
+            target="yes"
+        fi
+    else
+        if [[ "$answer" =~ ^[Yy]$ ]]; then
+            target="yes"
+        else
+            target="no"
+        fi
+    fi
+}
+
+choice_enabled() {
+    [[ "$1" == "yes" ]]
+}
+
+plan_item() {
+    local label="$1"
+    local choice="$2"
+
+    if choice_enabled "$choice"; then
+        printf '  %-34s %bRUN%b\n' "$label" "$GREEN" "$RESET"
+    else
+        printf '  %-34s %bSKIP%b\n' "$label" "$YELLOW" "$RESET"
+    fi
+}
+
+run_stage() {
+    local label="$1"
+    local choice="$2"
+    local script="$3"
+
+    if choice_enabled "$choice"; then
+        CURRENT_STAGE="$label"
+        section "$label"
+        bash "$script"
+        success "$label complete"
+    else
+        info "Skipping $label"
+    fi
 }
 
 # ---------- environment checks ----------
@@ -29,6 +150,11 @@ fi
 
 if ! command -v pacman >/dev/null 2>&1; then
     error "pacman was not found."
+    exit 1
+fi
+
+if ! command -v sudo >/dev/null 2>&1; then
+    error "sudo was not found."
     exit 1
 fi
 
@@ -58,19 +184,15 @@ fi
 
 # ---------- summary ----------
 
-echo
-echo "======================================"
-echo "        System Bootstrap"
-echo "======================================"
-echo
+banner "System Bootstrap"
 
-info "User:      $USER_NAME"
-info "Host:      $HOSTNAME"
-info "GPU:       $GPU_VENDOR"
-info "Dotfiles:  $DOTFILES_DIR"
+printf '%bMachine%b\n' "$BOLD" "$RESET"
+printf '  User:      %s\n' "$USER_NAME"
+printf '  Host:      %s\n' "$HOSTNAME"
+printf '  GPU:       %s\n' "$GPU_VENDOR"
+printf '  Dotfiles:  %s\n' "$DOTFILES_DIR"
 
 echo
-
 success "Arch-based system detected"
 success "Host profile found"
 success "GPU detection complete"
@@ -80,62 +202,60 @@ export HOSTNAME
 export USER_NAME
 export GPU_VENDOR
 
-echo
-echo "Bootstrap preflight passed."
-echo
-
 # ---------- bootstrap choices ----------
 
-read -rp "Install/update workstation packages? [Y/n] " install_packages
-read -rp "Link workstation configuration? [Y/n] " install_links
-read -rp "Configure development runtimes? [Y/n] " install_runtimes
-read -rp "Configure system services? [Y/n] " install_services
-read -rp "Configure Noctalia? [Y/n] " install_noctalia
-read -rp "Install/configure ComfyUI? [Y/n] " install_comfyui
+section "Installation Menu"
+printf '%bChoose everything up front, then the installer can run unattended.%b\n\n' "$DIM" "$RESET"
+
+prompt_yes_no install_packages "Install/update workstation packages?" yes
+prompt_yes_no install_links "Link workstation configuration?" yes
+prompt_yes_no install_runtimes "Configure development runtimes?" yes
+prompt_yes_no install_services "Configure system services?" yes
+prompt_yes_no install_noctalia "Configure Noctalia?" yes
+prompt_yes_no install_comfyui "Install/configure ComfyUI?" yes
+
+section "Install Plan"
+plan_item "Workstation packages" "$install_packages"
+plan_item "Configuration links" "$install_links"
+plan_item "Development runtimes" "$install_runtimes"
+plan_item "System services" "$install_services"
+plan_item "Noctalia" "$install_noctalia"
+plan_item "ComfyUI" "$install_comfyui"
 
 echo
-info "Selections recorded. Starting bootstrap..."
-echo
+info "Selections recorded. Authenticating sudo before the unattended run..."
+
+# ---------- sudo ----------
+
+CURRENT_STAGE="sudo authentication"
+sudo -v
+success "sudo credentials cached"
+
+# Keep sudo alive during long package / ComfyUI installs so later privileged
+# stages do not unexpectedly stop for another password prompt.
+(
+    while true; do
+        sleep 60
+        sudo -n true >/dev/null 2>&1 || exit 0
+    done
+) &
+SUDO_KEEPALIVE_PID=$!
+
+info "Starting bootstrap. You can walk away now."
 
 # ---------- install ----------
 
-if [[ ! "$install_packages" =~ ^[Nn]$ ]]; then
-    bash "$DOTFILES_DIR/install/packages.sh"
-else
-    info "Skipping package installation"
-fi
-
-if [[ ! "$install_links" =~ ^[Nn]$ ]]; then
-    bash "$DOTFILES_DIR/install/links.sh"
-else
-    info "Skipping configuration links"
-fi
-
-if [[ ! "$install_runtimes" =~ ^[Nn]$ ]]; then
-    bash "$DOTFILES_DIR/install/runtimes.sh"
-else
-    info "Skipping development runtimes"
-fi
-
-if [[ ! "$install_services" =~ ^[Nn]$ ]]; then
-    bash "$DOTFILES_DIR/install/services.sh"
-else
-    info "Skipping system services"
-fi
-
-if [[ ! "$install_noctalia" =~ ^[Nn]$ ]]; then
-    bash "$DOTFILES_DIR/install/noctalia.sh"
-else
-    info "Skipping Noctalia"
-fi
-
-if [[ ! "$install_comfyui" =~ ^[Nn]$ ]]; then
-    bash "$DOTFILES_DIR/install/comfyui.sh"
-else
-    info "Skipping ComfyUI"
-fi
+run_stage "Workstation packages" "$install_packages" "$DOTFILES_DIR/install/packages.sh"
+run_stage "Configuration links" "$install_links" "$DOTFILES_DIR/install/links.sh"
+run_stage "Development runtimes" "$install_runtimes" "$DOTFILES_DIR/install/runtimes.sh"
+run_stage "System services" "$install_services" "$DOTFILES_DIR/install/services.sh"
+run_stage "Noctalia" "$install_noctalia" "$DOTFILES_DIR/install/noctalia.sh"
+run_stage "ComfyUI" "$install_comfyui" "$DOTFILES_DIR/install/comfyui.sh"
 
 # ---------- refresh desktop ----------
+
+CURRENT_STAGE="Hyprland reload"
+section "Desktop Refresh"
 
 if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
     info "Reloading Hyprland configuration..."
@@ -143,7 +263,7 @@ if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}
     if hyprctl reload >/dev/null 2>&1; then
         success "Hyprland configuration reloaded"
     else
-        info "Hyprland reload failed; changes will apply after reboot/login"
+        warn "Hyprland reload failed; changes will apply after reboot/login"
     fi
 else
     info "No active Hyprland session detected; skipping reload"
@@ -151,18 +271,14 @@ fi
 
 # ---------- complete ----------
 
-echo
-echo "======================================"
-echo "       Bootstrap Complete"
-echo "======================================"
-echo
-
+CURRENT_STAGE="complete"
+banner "Bootstrap Complete"
 success "Workstation configuration finished"
 
 echo
-read -rp "Reboot now? [y/N] " reboot_now
+prompt_yes_no reboot_now "Reboot now?" no
 
-if [[ "$reboot_now" =~ ^[Yy]$ ]]; then
+if choice_enabled "$reboot_now"; then
     info "Rebooting..."
     sudo systemctl reboot
 else
