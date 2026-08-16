@@ -101,7 +101,8 @@ local appWorkspaces = {
     { class = "^(DBeaver)$", workspace = "2 silent" },
 
     -- NOT_PORN
-    { class = "^(firefox|chromium|vesktop)$", workspace = "3 silent" },
+    { class = "^(firefox|chromium)$", workspace = "3" },
+    { class = "^(vesktop)$", workspace = "3 silent" },
 
     -- GAMING
     { class = "^(net\\.lutris\\.Lutris)$", workspace = "4 silent" },

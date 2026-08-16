@@ -34,23 +34,23 @@ tint_intensity = 0.17999999597668648
 [lockscreen_widgets]
 enabled = true
 schema_version = 2
-widget_order = [ "lockscreen-login-box@DP-3", "lockscreen-widget-0000000000000001" ]
+widget_order = [ "lockscreen-login-box@__PRIMARY_MONITOR__", "lockscreen-widget-0000000000000001" ]
 
     [lockscreen_widgets.grid]
     cell_size = 16
     major_interval = 4
     visible = true
 
-    [lockscreen_widgets.widget."lockscreen-login-box@DP-3"]
+    [lockscreen_widgets.widget."lockscreen-login-box@__PRIMARY_MONITOR__"]
     box_height = 196.0
     box_width = 810.0
     cx = 1720.0
     cy = 1258.0
-    output = "DP-3"
+    output = "__PRIMARY_MONITOR__"
     rotation = 0.0
     type = "login_box"
 
-        [lockscreen_widgets.widget."lockscreen-login-box@DP-3".settings]
+        [lockscreen_widgets.widget."lockscreen-login-box@__PRIMARY_MONITOR__".settings]
         background_color = "surface_variant"
         background_opacity = 0.88
         background_radius = 12.0
@@ -71,7 +71,7 @@ widget_order = [ "lockscreen-login-box@DP-3", "lockscreen-widget-000000000000000
     box_width = 432.0
     cx = 1720.0
     cy = 144.0
-    output = "DP-3"
+    output = "__PRIMARY_MONITOR__"
     rotation = 0.0
     type = "clock"
 
@@ -152,13 +152,13 @@ wallpaper_scheme = "m3-tonal-spot"
     builtin_ids = [ "alacritty", "btop", "gtk3", "gtk4", "hyprland", "kcolorscheme", "kitty", "qt" ]
 
 [wallpaper.default]
-path = "/home/zakk/Pictures/Wallpapers/lofi-girl-dreams-3840x2160-14891.jpeg"
+path = "__HOME__/Pictures/Wallpapers/lofi-girl-dreams-3840x2160-14891.jpeg"
 
 [wallpaper.last]
-path = "/home/zakk/Pictures/Wallpapers/lofi-girl-dreams-3840x2160-14891.jpeg"
+path = "__HOME__/Pictures/Wallpapers/lofi-girl-dreams-3840x2160-14891.jpeg"
 
-[wallpaper.monitors.DP-3]
-path = "/home/zakk/Pictures/Wallpapers/lofi-girl-dreams-3840x2160-14891.jpeg"
+[wallpaper.monitors.__PRIMARY_MONITOR__]
+path = "__HOME__/Pictures/Wallpapers/lofi-girl-dreams-3840x2160-14891.jpeg"
 
 [widget.active_window]
 enabled = false
