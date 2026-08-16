@@ -80,13 +80,25 @@ export HOSTNAME
 export USER_NAME
 export GPU_VENDOR
 
-
 echo
 echo "Bootstrap preflight passed."
 echo
 
-echo
+# ---------- bootstrap choices ----------
+
 read -rp "Install/update workstation packages? [Y/n] " install_packages
+read -rp "Link workstation configuration? [Y/n] " install_links
+read -rp "Configure development runtimes? [Y/n] " install_runtimes
+read -rp "Configure system services? [Y/n] " install_services
+read -rp "Configure Noctalia? [Y/n] " install_noctalia
+read -rp "Install/configure ComfyUI? [Y/n] " install_comfyui
+read -rp "Reboot automatically when bootstrap completes? [y/N] " reboot_now
+
+echo
+info "Selections recorded. Starting bootstrap..."
+echo
+
+# ---------- install ----------
 
 if [[ ! "$install_packages" =~ ^[Nn]$ ]]; then
     bash "$DOTFILES_DIR/install/packages.sh"
@@ -94,17 +106,11 @@ else
     info "Skipping package installation"
 fi
 
-echo
-read -rp "Link workstation configuration? [Y/n] " install_links
-
 if [[ ! "$install_links" =~ ^[Nn]$ ]]; then
     bash "$DOTFILES_DIR/install/links.sh"
 else
     info "Skipping configuration links"
 fi
-
-echo
-read -rp "Configure development runtimes? [Y/n] " install_runtimes
 
 if [[ ! "$install_runtimes" =~ ^[Nn]$ ]]; then
     bash "$DOTFILES_DIR/install/runtimes.sh"
@@ -112,17 +118,11 @@ else
     info "Skipping development runtimes"
 fi
 
-echo
-read -rp "Configure system services? [Y/n] " install_services
-
 if [[ ! "$install_services" =~ ^[Nn]$ ]]; then
     bash "$DOTFILES_DIR/install/services.sh"
 else
     info "Skipping system services"
 fi
-
-echo
-read -rp "Configure Noctalia? [Y/n] " install_noctalia
 
 if [[ ! "$install_noctalia" =~ ^[Nn]$ ]]; then
     bash "$DOTFILES_DIR/install/noctalia.sh"
@@ -130,14 +130,27 @@ else
     info "Skipping Noctalia"
 fi
 
-echo
-read -rp "Install/configure ComfyUI? [Y/n] " install_comfyui
-
 if [[ ! "$install_comfyui" =~ ^[Nn]$ ]]; then
     bash "$DOTFILES_DIR/install/comfyui.sh"
 else
     info "Skipping ComfyUI"
 fi
+
+# ---------- refresh desktop ----------
+
+if command -v hyprctl >/dev/null 2>&1 && [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+    info "Reloading Hyprland configuration..."
+
+    if hyprctl reload >/dev/null 2>&1; then
+        success "Hyprland configuration reloaded"
+    else
+        info "Hyprland reload failed; changes will apply after reboot/login"
+    fi
+else
+    info "No active Hyprland session detected; skipping reload"
+fi
+
+# ---------- complete ----------
 
 echo
 echo "======================================"
@@ -147,12 +160,11 @@ echo
 
 success "Workstation configuration finished"
 
-echo
-read -rp "Reboot now? [y/N] " reboot_now
-
 if [[ "$reboot_now" =~ ^[Yy]$ ]]; then
+    echo
     info "Rebooting..."
     sudo systemctl reboot
 else
+    echo
     info "Reboot skipped"
 fi
