@@ -133,7 +133,7 @@ hl.bind(mainMod .. " + A", hl.dsp.exec_cmd(noctCall .. "panel-toggle control-cen
 -- Toggle ComfyUI
 hl.bind(
     mainMod .. " + SHIFT + G",
-    hl.dsp.exec_cmd(home .. "/dotfiles/scripts/comfy -toggle")
+    hl.dsp.exec_cmd(home .. "/.local/bin/comfy -toggle")
 )
 
 -------------------------------
@@ -175,5 +175,5 @@ hl.bind(mainMod .. " + S",         hl.dsp.workspace.toggle_special())
 -- ComfyUI logs
 hl.bind(
     mainMod .. " + ALT + code:84",
-    hl.dsp.exec_cmd(home .. "/dotfiles/scripts/comfylogs-toggle")
+    hl.dsp.exec_cmd(home .. "/.local/bin/comfylogs-toggle")
 )
