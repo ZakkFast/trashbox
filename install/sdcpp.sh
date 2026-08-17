@@ -411,34 +411,63 @@ resolve_image_model() {
 
 find_wan_model() {
     local kind="$1"
-    local expected fallback
+    local safetensors_name safetensors_pattern gguf_name gguf_pattern
+    local dir model
 
     case "$kind" in
         low)
-            expected="SmoothMix_I2V_v2_Low-Q3_K_M.gguf"
-            fallback='*SmoothMix*I2V*Low*.gguf'
+            safetensors_name="smoothMixWan2214BI2V_i2vV20Low.safetensors"
+            safetensors_pattern='*smoothMixWan22*Low*.safetensors'
+            gguf_name="SmoothMix_I2V_v2_Low-Q3_K_M.gguf"
+            gguf_pattern='*SmoothMix*I2V*Low*.gguf'
             ;;
         high)
-            expected="SmoothMix_I2V_v2_High-Q3_K_M.gguf"
-            fallback='*SmoothMix*I2V*High*.gguf'
+            safetensors_name="smoothMixWan2214BI2V_i2vV20High.safetensors"
+            safetensors_pattern='*smoothMixWan22*High*.safetensors'
+            gguf_name="SmoothMix_I2V_v2_High-Q3_K_M.gguf"
+            gguf_pattern='*SmoothMix*I2V*High*.gguf'
             ;;
         *)
             return 1
             ;;
     esac
 
-    if [[ -f "$DIFFUSION_DIR/$expected" ]]; then
-        printf '%s\n' "$DIFFUSION_DIR/$expected"
-        return
-    fi
+    # stable-diffusion.cpp can load the native SmoothMix safetensors directly.
+    # Prefer them over the ComfyUI-oriented GGUFs, which sd.cpp currently rejects
+    # because their Wan patch_embedding tensor uses a 5-D GGUF layout.
+    for dir in "$DIFFUSION_DIR" "$LEGACY_UNET_DIR"; do
+        [[ -d "$dir" ]] || continue
+        if [[ -f "$dir/$safetensors_name" ]]; then
+            printf '%s\n' "$dir/$safetensors_name"
+            return 0
+        fi
+    done
 
-    if [[ -d "$LEGACY_UNET_DIR" && -f "$LEGACY_UNET_DIR/$expected" ]]; then
-        printf '%s\n' "$LEGACY_UNET_DIR/$expected"
-        return
-    fi
+    for dir in "$DIFFUSION_DIR" "$LEGACY_UNET_DIR"; do
+        [[ -d "$dir" ]] || continue
+        model="$(find_first "$dir" "$safetensors_pattern" || true)"
+        if [[ -n "$model" ]]; then
+            printf '%s\n' "$model"
+            return 0
+        fi
+    done
 
-    find_first "$DIFFUSION_DIR" "$fallback" \
-        || find_first "$LEGACY_UNET_DIR" "$fallback"
+    # Return a legacy GGUF only so wan_paths can produce a useful compatibility
+    # error instead of pretending no SmoothMix model is installed at all.
+    for dir in "$DIFFUSION_DIR" "$LEGACY_UNET_DIR"; do
+        [[ -d "$dir" ]] || continue
+        if [[ -f "$dir/$gguf_name" ]]; then
+            printf '%s\n' "$dir/$gguf_name"
+            return 0
+        fi
+        model="$(find_first "$dir" "$gguf_pattern" || true)"
+        if [[ -n "$model" ]]; then
+            printf '%s\n' "$model"
+            return 0
+        fi
+    done
+
+    return 1
 }
 
 wan_paths() {
@@ -447,8 +476,13 @@ wan_paths() {
     WAN_VAE="$VAE_DIR/wan_2.1_vae.safetensors"
     WAN_T5="$TEXT_ENCODER_DIR/$WAN_T5_NAME"
 
-    [[ -n "$WAN_LOW" && -f "$WAN_LOW" ]] || die "SmoothMix LOW GGUF was not found in $DIFFUSION_DIR or $LEGACY_UNET_DIR."
-    [[ -n "$WAN_HIGH" && -f "$WAN_HIGH" ]] || die "SmoothMix HIGH GGUF was not found in $DIFFUSION_DIR or $LEGACY_UNET_DIR."
+    [[ -n "$WAN_LOW" && -f "$WAN_LOW" ]] || die "SmoothMix LOW model was not found in $DIFFUSION_DIR or $LEGACY_UNET_DIR."
+    [[ -n "$WAN_HIGH" && -f "$WAN_HIGH" ]] || die "SmoothMix HIGH model was not found in $DIFFUSION_DIR or $LEGACY_UNET_DIR."
+
+    if [[ "${WAN_LOW,,}" == *.gguf || "${WAN_HIGH,,}" == *.gguf ]]; then
+        die "Only the legacy SmoothMix GGUF pair was found. This stable-diffusion.cpp build cannot load those ComfyUI GGUFs. Download the V2 HIGH/LOW .safetensors files into $DIFFUSION_DIR and rerun."
+    fi
+
     [[ -f "$WAN_VAE" ]] || die "Wan VAE was not found: $WAN_VAE"
     [[ -f "$WAN_T5" ]] || die "Wan T5 was not found: $WAN_T5"
 }
@@ -541,7 +575,7 @@ wan_test() {
 
     echo "Running conservative Wan 2.2 I2V smoke test:"
     echo "  832x480, 33 frames, 16 fps"
-    echo "  Q3 LOW/HIGH SmoothMix, 3+3 steps, CFG 1, Euler + simple, flow shift 5"
+    echo "  SmoothMix safetensors LOW/HIGH, 3+3 steps, CFG 1, Euler + simple, flow shift 5"
     echo "  GPU: $GPU_BACKEND with ${VRAM_GB} GiB budget"
     echo "  T5 + VAE: CPU"
     echo "  diffusion params: disk-backed"
