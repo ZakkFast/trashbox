@@ -14,15 +14,20 @@ FASTWAN_MODEL="$DIFFUSION_DIR/$FASTWAN_MODEL_NAME"
 FASTWAN_MODEL_URL="https://huggingface.co/Green-Sky/FastWan2.2-TI2V-5B-FullAttn-GGUF/resolve/main/$FASTWAN_MODEL_NAME?download=true"
 FASTWAN_MODEL_SHA256="b62f50ff87c4dfa2910c6883d45015e05b709366581698b302e259e7f25c9208"
 
-FASTWAN_TAE_NAME="taew2_2.safetensors"
-FASTWAN_TAE="$VAE_DIR/$FASTWAN_TAE_NAME"
-FASTWAN_TAE_URL="https://huggingface.co/lightx2v/Autoencoders/resolve/main/$FASTWAN_TAE_NAME?download=true"
-FASTWAN_TAE_SHA256="5243c5c9d77ecf2d74800d672bac3678c0d72462899f1b3b10aa1bbc11eae461"
+PREVIEW_TAE_NAME="taew2_2.safetensors"
+PREVIEW_TAE="$VAE_DIR/$PREVIEW_TAE_NAME"
+PREVIEW_TAE_URL="https://huggingface.co/lightx2v/Autoencoders/resolve/main/$PREVIEW_TAE_NAME?download=true"
+PREVIEW_TAE_SHA256="5243c5c9d77ecf2d74800d672bac3678c0d72462899f1b3b10aa1bbc11eae461"
 
-FASTWAN_VAE_NAME="wan2.2_vae.safetensors"
-FASTWAN_VAE="$VAE_DIR/$FASTWAN_VAE_NAME"
-FASTWAN_VAE_URL="https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/$FASTWAN_VAE_NAME?download=true"
-FASTWAN_VAE_SHA256="e40321bd36b9709991dae2530eb4ac303dd168276980d3e9bc4b6e2b75fed156"
+BALANCED_TAE_NAME="lighttaew2_2.safetensors"
+BALANCED_TAE="$VAE_DIR/$BALANCED_TAE_NAME"
+BALANCED_TAE_URL="https://huggingface.co/lightx2v/Autoencoders/resolve/main/$BALANCED_TAE_NAME?download=true"
+BALANCED_TAE_SHA256="10124099e0c9864db4e6bcd0f09d822282753e553d344fcf2748cf50140ba16a"
+
+QUALITY_VAE_NAME="wan2.2_vae.safetensors"
+QUALITY_VAE="$VAE_DIR/$QUALITY_VAE_NAME"
+QUALITY_VAE_URL="https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/$QUALITY_VAE_NAME?download=true"
+QUALITY_VAE_SHA256="e40321bd36b9709991dae2530eb4ac303dd168276980d3e9bc4b6e2b75fed156"
 
 WRAPPER="$HOME/.local/bin/sdcpp-fastwan"
 FASTWAN_PORT="${SDCPP_FASTWAN_PORT:-1235}"
@@ -58,10 +63,11 @@ download_verified() {
 }
 
 download_verified "FastWan 2.2 TI2V 5B Q8" "$FASTWAN_MODEL_URL" "$FASTWAN_MODEL" "$FASTWAN_MODEL_SHA256"
-download_verified "Wan 2.2 TAEHV" "$FASTWAN_TAE_URL" "$FASTWAN_TAE" "$FASTWAN_TAE_SHA256"
-download_verified "Wan 2.2 full VAE" "$FASTWAN_VAE_URL" "$FASTWAN_VAE" "$FASTWAN_VAE_SHA256"
+download_verified "Wan 2.2 preview TAE" "$PREVIEW_TAE_URL" "$PREVIEW_TAE" "$PREVIEW_TAE_SHA256"
+download_verified "Wan 2.2 LightTAE" "$BALANCED_TAE_URL" "$BALANCED_TAE" "$BALANCED_TAE_SHA256"
+download_verified "Wan 2.2 full VAE" "$QUALITY_VAE_URL" "$QUALITY_VAE" "$QUALITY_VAE_SHA256"
 
-cat > "$WRAPPER" <<EOF
+cat > "$WRAPPER" <<EOF_WRAPPER
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
@@ -71,8 +77,9 @@ CONFIG_FILE="\${XDG_CONFIG_HOME:-\$HOME/.config}/sdcpp/config"
 source "\$CONFIG_FILE"
 
 MODEL='$FASTWAN_MODEL'
-TAE='$FASTWAN_TAE'
-FULL_VAE='$FASTWAN_VAE'
+PREVIEW_TAE='$PREVIEW_TAE'
+BALANCED_TAE='$BALANCED_TAE'
+QUALITY_VAE='$QUALITY_VAE'
 T5="\$TEXT_ENCODER_DIR/\$WAN_T5_NAME"
 PORT="\${SDCPP_FASTWAN_PORT:-$FASTWAN_PORT}"
 STATE="\$STATE_DIR/fastwan"
@@ -109,6 +116,7 @@ stop_server() {
         echo "FastWan server is not running."
         return
     fi
+
     local pid
     pid="\$(cat "\$PID_FILE")"
     echo "Stopping FastWan server (PID \$pid)..."
@@ -121,17 +129,66 @@ stop_server() {
         fi
         sleep 0.2
     done
+
     kill -9 "\$pid" 2>/dev/null || true
     rm -f "\$PID_FILE"
     echo "Stopped with SIGKILL."
 }
 
 start_server() {
-    local mode="\${1:-fast}"
+    local profile="\${1:-balanced}"
     [[ -f "\$MODEL" ]] || die "FastWan model missing: \$MODEL"
-    [[ -f "\$TAE" ]] || die "TAE missing: \$TAE"
-    [[ -f "\$FULL_VAE" ]] || die "Full Wan 2.2 VAE missing: \$FULL_VAE"
     [[ -f "\$T5" ]] || die "T5 missing: \$T5"
+
+    local decoder_label
+    local -a decoder_args backend_args
+
+    case "\$profile" in
+        preview|fast)
+            [[ -f "\$PREVIEW_TAE" ]] || die "Preview TAE missing: \$PREVIEW_TAE"
+            decoder_label="Preview TAE (fastest, lowest reconstruction quality)"
+            decoder_args=(--tae "\$PREVIEW_TAE")
+            backend_args=(
+                --backend "diffusion=\$GPU_BACKEND,te=cpu,vae=\$GPU_BACKEND"
+                --params-backend "diffusion=\$GPU_BACKEND,te=cpu,vae=\$GPU_BACKEND"
+                --max-vram -1
+            )
+            ;;
+        balanced)
+            [[ -f "\$BALANCED_TAE" ]] || die "LightTAE missing: \$BALANCED_TAE"
+            decoder_label="LightTAE (fast, higher reconstruction quality)"
+            decoder_args=(--tae "\$BALANCED_TAE")
+            backend_args=(
+                --backend "diffusion=\$GPU_BACKEND,te=cpu,vae=\$GPU_BACKEND"
+                --params-backend "diffusion=\$GPU_BACKEND,te=cpu,vae=\$GPU_BACKEND"
+                --max-vram -1
+            )
+            ;;
+        quality)
+            [[ -f "\$QUALITY_VAE" ]] || die "Full Wan 2.2 VAE missing: \$QUALITY_VAE"
+            decoder_label="Full Wan 2.2 VAE (highest reconstruction quality, slow CPU decode)"
+            decoder_args=(--vae "\$QUALITY_VAE")
+            backend_args=(
+                --backend "diffusion=\$GPU_BACKEND,te=cpu,vae=cpu"
+                --params-backend "diffusion=\$GPU_BACKEND,te=cpu,vae=cpu"
+                --max-vram -1
+            )
+            ;;
+        lowmem)
+            [[ -f "\$BALANCED_TAE" ]] || die "LightTAE missing: \$BALANCED_TAE"
+            decoder_label="LightTAE + CPU-streamed diffusion weights"
+            decoder_args=(--tae "\$BALANCED_TAE")
+            backend_args=(
+                --backend "diffusion=\$GPU_BACKEND,te=cpu,vae=\$GPU_BACKEND"
+                --params-backend "diffusion=cpu,te=cpu,vae=\$GPU_BACKEND"
+                --max-vram -1
+                --stream-layers
+            )
+            ;;
+        *)
+            die "Unknown profile: \$profile"
+            ;;
+    esac
 
     if running; then
         stop_server
@@ -139,71 +196,33 @@ start_server() {
 
     : > "\$LOG_FILE"
 
-    local -a memory_args decoder_args
-    case "\$mode" in
-        quality)
-            memory_args=(
-                --backend "diffusion=\$GPU_BACKEND,te=cpu,vae=cpu"
-                --params-backend "diffusion=\$GPU_BACKEND,te=cpu,vae=cpu"
-                --max-vram -1
-            )
-            decoder_args=(--vae "\$FULL_VAE")
-            echo "Mode: QUALITY (same 3-step diffusion, full Wan 2.2 VAE on CPU)"
-            ;;
-        lowmem)
-            memory_args=(
-                --backend "diffusion=\$GPU_BACKEND,te=cpu,vae=\$GPU_BACKEND"
-                --params-backend "diffusion=cpu,te=cpu,vae=\$GPU_BACKEND"
-                --max-vram -1
-                --stream-layers
-            )
-            decoder_args=(--tae "\$TAE")
-            echo "Mode: LOWMEM (CPU-streamed diffusion weights + TAE)"
-            ;;
-        fast|server)
-            memory_args=(
-                --backend "diffusion=\$GPU_BACKEND,te=cpu,vae=\$GPU_BACKEND"
-                --params-backend "diffusion=\$GPU_BACKEND,te=cpu,vae=\$GPU_BACKEND"
-                --max-vram -1
-            )
-            decoder_args=(--tae "\$TAE")
-            echo "Mode: FAST (Q8 diffusion on GPU + TAE)"
-            ;;
-        *)
-            die "Unknown FastWan mode: \$mode"
-            ;;
-    esac
+    echo "Profile: \$profile"
+    echo "Model:   \$MODEL"
+    echo "Decoder: \$decoder_label"
+    echo "T5:      \$T5"
+    echo "Preset:  \${W}x\${H} / \${FRAMES} frames / \${FPS} fps / \${STEPS} steps / CFG \${CFG} / Euler + \${SCHEDULER} / shift \${FLOW_SHIFT}"
+    echo "GPU:     \$GPU_BACKEND"
+    echo "Log:     \$LOG_FILE"
 
-    echo "Model: \$MODEL"
-    if [[ "\$mode" == "quality" ]]; then
-        echo "VAE:   \$FULL_VAE"
-    else
-        echo "TAE:   \$TAE"
-    fi
-    echo "T5:    \$T5"
-    echo "Preset: \${W}x\${H} / \${FRAMES} frames / \${FPS} fps / \${STEPS} steps / CFG \${CFG} / Euler + \${SCHEDULER} / shift \${FLOW_SHIFT}"
-    echo "GPU: \$GPU_BACKEND"
-    echo "Log: \$LOG_FILE"
-
-    nohup "\$SD_SERVER" \\
-        --listen-ip 127.0.0.1 \\
-        --listen-port "\$PORT" \\
-        --diffusion-model "\$MODEL" \\
-        "\${decoder_args[@]}" \\
-        --t5xxl "\$T5" \\
-        "\${memory_args[@]}" \\
-        --diffusion-fa \\
-        --vae-conv-direct \\
-        -W "\$W" \\
-        -H "\$H" \\
-        --video-frames "\$FRAMES" \\
-        --fps "\$FPS" \\
-        --cfg-scale "\$CFG" \\
-        --sampling-method euler \\
-        --scheduler "\$SCHEDULER" \\
-        --steps "\$STEPS" \\
-        --flow-shift "\$FLOW_SHIFT" \\
-        -v \\
+    nohup "\$SD_SERVER" \
+        --listen-ip 127.0.0.1 \
+        --listen-port "\$PORT" \
+        --diffusion-model "\$MODEL" \
+        "\${decoder_args[@]}" \
+        --t5xxl "\$T5" \
+        "\${backend_args[@]}" \
+        --diffusion-fa \
+        --vae-conv-direct \
+        -W "\$W" \
+        -H "\$H" \
+        --video-frames "\$FRAMES" \
+        --fps "\$FPS" \
+        --cfg-scale "\$CFG" \
+        --sampling-method euler \
+        --scheduler "\$SCHEDULER" \
+        --steps "\$STEPS" \
+        --flow-shift "\$FLOW_SHIFT" \
+        -v \
         >"\$LOG_FILE" 2>&1 &
 
     local pid=\$!
@@ -229,9 +248,12 @@ start_server() {
     echo "Server is still starting. Follow with: sdcpp-fastwan logs"
 }
 
-case "\${1:-fast}" in
-    server|fast)
-        start_server fast
+case "\${1:-balanced}" in
+    preview|fast)
+        start_server preview
+        ;;
+    balanced)
+        start_server balanced
         ;;
     quality)
         start_server quality
@@ -258,16 +280,21 @@ case "\${1:-fast}" in
     help|-h|--help)
         cat <<HELP
 Usage:
-  sdcpp-fastwan           # 3-step FastWan + tiny TAE decoder
-  sdcpp-fastwan quality   # same 3-step FastWan + full Wan 2.2 VAE
-  sdcpp-fastwan lowmem    # CPU streaming fallback + TAE
+  sdcpp-fastwan balanced   # default: LightTAE, fast with better decode quality
+  sdcpp-fastwan preview    # original tiny TAE, fastest preview mode
+  sdcpp-fastwan quality    # full Wan 2.2 VAE on CPU, slow reference-quality decode
+  sdcpp-fastwan lowmem     # LightTAE + CPU-streamed diffusion weights
   sdcpp-fastwan logs
   sdcpp-fastwan status
   sdcpp-fastwan stop
 
-First quality test:
-  Use the exact same prompt/input as FAST mode, but run 'sdcpp-fastwan quality'.
-  That isolates TAE vs full VAE without changing sampling.
+Bare 'sdcpp-fastwan' starts balanced mode.
+
+Default validation preset:
+  832x480 / 33 frames / 16 fps / 3 steps / CFG 1 / Euler + LCM / flow shift 3
+
+5-second 720p target (after 480p balanced is validated):
+  SDCPP_FASTWAN_W=1280 SDCPP_FASTWAN_H=720 SDCPP_FASTWAN_FRAMES=81 sdcpp-fastwan balanced
 
 Environment overrides:
   SDCPP_FASTWAN_W
@@ -284,14 +311,14 @@ HELP
         die "Unknown command: \$1"
         ;;
 esac
-EOF
+EOF_WRAPPER
 
 chmod 755 "$WRAPPER"
 
 printf '\n[ OK ] FastWan installed.\n'
-printf 'Model:    %s\n' "$FASTWAN_MODEL"
-printf 'TAE:      %s\n' "$FASTWAN_TAE"
-printf 'Full VAE: %s\n' "$FASTWAN_VAE"
-printf '\nRun fast mode:\n  sdcpp-fastwan\n'
-printf '\nRun quality decoder comparison:\n  sdcpp-fastwan quality\n'
-printf '\nWatch progress:\n  sdcpp-fastwan logs\n'
+printf 'Model:       %s\n' "$FASTWAN_MODEL"
+printf 'Preview TAE: %s\n' "$PREVIEW_TAE"
+printf 'LightTAE:    %s\n' "$BALANCED_TAE"
+printf 'Full VAE:    %s\n' "$QUALITY_VAE"
+printf '\nRecommended next test:\n  sdcpp-fastwan balanced\n\n'
+printf 'Watch progress:\n  sdcpp-fastwan logs\n'
