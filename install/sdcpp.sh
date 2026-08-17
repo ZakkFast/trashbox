@@ -311,6 +311,14 @@ port_in_use() {
     ss -ltn "sport = :$SERVER_PORT" 2>/dev/null | grep -q LISTEN
 }
 
+print_server_failure_log() {
+    echo >&2
+    echo "--- server log: first 40 lines ---" >&2
+    head -n 40 "$LOG_FILE" >&2 || true
+    echo "--- server log: last 80 lines ---" >&2
+    tail -n 80 "$LOG_FILE" >&2 || true
+}
+
 start_server() {
     local label="$1"
     shift
@@ -342,8 +350,7 @@ start_server() {
 
     for _ in {1..120}; do
         if ! kill -0 "$pid" 2>/dev/null; then
-            echo
-            tail -n 120 "$LOG_FILE" >&2 || true
+            print_server_failure_log
             rm -f "$PID_FILE"
             die "$label exited during startup."
         fi
@@ -447,18 +454,42 @@ wan_paths() {
 }
 
 start_image() {
+    local requested="${1:-}"
     local model
-    model="$(resolve_image_model "${1:-}")"
+    model="$(resolve_image_model "$requested")"
     echo "Model: $model"
 
-    start_server "SDXL image server" \
-        -m "$model" \
-        --backend "$GPU_BACKEND" \
-        --params-backend "$GPU_BACKEND" \
-        --max-vram "$GPU_BACKEND=$VRAM_GB" \
-        --vae-tiling \
-        --lora-model-dir "$LORA_DIR" \
-        -v
+    case "${requested,,}" in
+        pony|illustrious)
+            echo "Preset: SDXL 1024px / 25 steps / CFG 6 / DPM++ 2M / Karras / clip skip 2"
+            start_server "SDXL image server" \
+                -m "$model" \
+                --backend "$GPU_BACKEND" \
+                --params-backend "$GPU_BACKEND" \
+                --max-vram "$GPU_BACKEND=$VRAM_GB" \
+                -W 1024 \
+                -H 1024 \
+                --steps 25 \
+                --cfg-scale 6.0 \
+                --sampling-method dpm++2m \
+                --scheduler karras \
+                --clip-skip 2 \
+                --diffusion-fa \
+                --vae-tiling \
+                --lora-model-dir "$LORA_DIR" \
+                -v
+            ;;
+        *)
+            start_server "image server" \
+                -m "$model" \
+                --backend "$GPU_BACKEND" \
+                --params-backend "$GPU_BACKEND" \
+                --max-vram "$GPU_BACKEND=$VRAM_GB" \
+                --vae-tiling \
+                --lora-model-dir "$LORA_DIR" \
+                -v
+            ;;
+    esac
 }
 
 start_wan() {
@@ -468,9 +499,10 @@ start_wan() {
     echo "HIGH: $WAN_HIGH"
     echo "VAE:  $WAN_VAE"
     echo "T5:   $WAN_T5"
+    echo "Memory plan: diffusion on $GPU_BACKEND; diffusion weights disk-backed; T5 + VAE on CPU"
+    echo "Preset: 832x480 / 33 frames / 16 fps / SmoothMix 3+3 steps / CFG 1 / Euler + simple / flow shift 5"
 
     start_server "Wan 2.2 SmoothMix server" \
-        -M vid_gen \
         --diffusion-model "$WAN_LOW" \
         --high-noise-diffusion-model "$WAN_HIGH" \
         --vae "$WAN_VAE" \
@@ -478,13 +510,19 @@ start_wan() {
         --backend "diffusion=$GPU_BACKEND,te=cpu,vae=cpu" \
         --params-backend "diffusion=disk,te=cpu,vae=cpu" \
         --max-vram "$GPU_BACKEND=$VRAM_GB" \
+        -W 832 \
+        -H 480 \
+        --video-frames 33 \
+        --fps 16 \
         --cfg-scale 1.0 \
         --sampling-method euler \
+        --scheduler simple \
         --steps 3 \
         --high-noise-cfg-scale 1.0 \
         --high-noise-sampling-method euler \
         --high-noise-steps 3 \
         --flow-shift 5.0 \
+        --diffusion-fa \
         --lora-model-dir "$LORA_DIR" \
         -v
 }
@@ -503,10 +541,11 @@ wan_test() {
 
     echo "Running conservative Wan 2.2 I2V smoke test:"
     echo "  832x480, 33 frames, 16 fps"
-    echo "  Q3 LOW/HIGH SmoothMix"
+    echo "  Q3 LOW/HIGH SmoothMix, 3+3 steps, CFG 1, Euler + simple, flow shift 5"
     echo "  GPU: $GPU_BACKEND with ${VRAM_GB} GiB budget"
     echo "  T5 + VAE: CPU"
     echo "  diffusion params: disk-backed"
+    echo "  Vulkan flash attention: enabled"
     echo "  output: $output"
 
     "$SD_CLI" \
@@ -524,6 +563,7 @@ wan_test() {
         --fps 16 \
         --cfg-scale 1.0 \
         --sampling-method euler \
+        --scheduler simple \
         --steps 3 \
         --high-noise-cfg-scale 1.0 \
         --high-noise-sampling-method euler \
@@ -532,6 +572,7 @@ wan_test() {
         --backend "diffusion=$GPU_BACKEND,te=cpu,vae=cpu" \
         --params-backend "diffusion=disk,te=cpu,vae=cpu" \
         --max-vram "$GPU_BACKEND=$VRAM_GB" \
+        --diffusion-fa \
         -v \
         -o "$output"
 
