@@ -19,6 +19,11 @@ FASTWAN_TAE="$VAE_DIR/$FASTWAN_TAE_NAME"
 FASTWAN_TAE_URL="https://huggingface.co/lightx2v/Autoencoders/resolve/main/$FASTWAN_TAE_NAME?download=true"
 FASTWAN_TAE_SHA256="5243c5c9d77ecf2d74800d672bac3678c0d72462899f1b3b10aa1bbc11eae461"
 
+FASTWAN_VAE_NAME="wan2.2_vae.safetensors"
+FASTWAN_VAE="$VAE_DIR/$FASTWAN_VAE_NAME"
+FASTWAN_VAE_URL="https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged/resolve/main/split_files/vae/$FASTWAN_VAE_NAME?download=true"
+FASTWAN_VAE_SHA256="e40321bd36b9709991dae2530eb4ac303dd168276980d3e9bc4b6e2b75fed156"
+
 WRAPPER="$HOME/.local/bin/sdcpp-fastwan"
 FASTWAN_PORT="${SDCPP_FASTWAN_PORT:-1235}"
 
@@ -54,6 +59,7 @@ download_verified() {
 
 download_verified "FastWan 2.2 TI2V 5B Q8" "$FASTWAN_MODEL_URL" "$FASTWAN_MODEL" "$FASTWAN_MODEL_SHA256"
 download_verified "Wan 2.2 TAEHV" "$FASTWAN_TAE_URL" "$FASTWAN_TAE" "$FASTWAN_TAE_SHA256"
+download_verified "Wan 2.2 full VAE" "$FASTWAN_VAE_URL" "$FASTWAN_VAE" "$FASTWAN_VAE_SHA256"
 
 cat > "$WRAPPER" <<EOF
 #!/usr/bin/env bash
@@ -66,6 +72,7 @@ source "\$CONFIG_FILE"
 
 MODEL='$FASTWAN_MODEL'
 TAE='$FASTWAN_TAE'
+FULL_VAE='$FASTWAN_VAE'
 T5="\$TEXT_ENCODER_DIR/\$WAN_T5_NAME"
 PORT="\${SDCPP_FASTWAN_PORT:-$FASTWAN_PORT}"
 STATE="\$STATE_DIR/fastwan"
@@ -123,6 +130,7 @@ start_server() {
     local mode="\${1:-fast}"
     [[ -f "\$MODEL" ]] || die "FastWan model missing: \$MODEL"
     [[ -f "\$TAE" ]] || die "TAE missing: \$TAE"
+    [[ -f "\$FULL_VAE" ]] || die "Full Wan 2.2 VAE missing: \$FULL_VAE"
     [[ -f "\$T5" ]] || die "T5 missing: \$T5"
 
     if running; then
@@ -131,26 +139,47 @@ start_server() {
 
     : > "\$LOG_FILE"
 
-    local -a memory_args
-    if [[ "\$mode" == "lowmem" ]]; then
-        memory_args=(
-            --backend "diffusion=\$GPU_BACKEND,te=cpu,vae=\$GPU_BACKEND"
-            --params-backend "diffusion=cpu,te=cpu,vae=\$GPU_BACKEND"
-            --max-vram -1
-            --stream-layers
-        )
-        echo "Memory mode: LOWMEM (CPU-streamed diffusion weights)"
-    else
-        memory_args=(
-            --backend "diffusion=\$GPU_BACKEND,te=cpu,vae=\$GPU_BACKEND"
-            --params-backend "diffusion=\$GPU_BACKEND,te=cpu,vae=\$GPU_BACKEND"
-            --max-vram -1
-        )
-        echo "Memory mode: FAST (Q8 diffusion weights resident on GPU)"
-    fi
+    local -a memory_args decoder_args
+    case "\$mode" in
+        quality)
+            memory_args=(
+                --backend "diffusion=\$GPU_BACKEND,te=cpu,vae=cpu"
+                --params-backend "diffusion=\$GPU_BACKEND,te=cpu,vae=cpu"
+                --max-vram -1
+            )
+            decoder_args=(--vae "\$FULL_VAE")
+            echo "Mode: QUALITY (same 3-step diffusion, full Wan 2.2 VAE on CPU)"
+            ;;
+        lowmem)
+            memory_args=(
+                --backend "diffusion=\$GPU_BACKEND,te=cpu,vae=\$GPU_BACKEND"
+                --params-backend "diffusion=cpu,te=cpu,vae=\$GPU_BACKEND"
+                --max-vram -1
+                --stream-layers
+            )
+            decoder_args=(--tae "\$TAE")
+            echo "Mode: LOWMEM (CPU-streamed diffusion weights + TAE)"
+            ;;
+        fast|server)
+            memory_args=(
+                --backend "diffusion=\$GPU_BACKEND,te=cpu,vae=\$GPU_BACKEND"
+                --params-backend "diffusion=\$GPU_BACKEND,te=cpu,vae=\$GPU_BACKEND"
+                --max-vram -1
+            )
+            decoder_args=(--tae "\$TAE")
+            echo "Mode: FAST (Q8 diffusion on GPU + TAE)"
+            ;;
+        *)
+            die "Unknown FastWan mode: \$mode"
+            ;;
+    esac
 
     echo "Model: \$MODEL"
-    echo "TAE:   \$TAE"
+    if [[ "\$mode" == "quality" ]]; then
+        echo "VAE:   \$FULL_VAE"
+    else
+        echo "TAE:   \$TAE"
+    fi
     echo "T5:    \$T5"
     echo "Preset: \${W}x\${H} / \${FRAMES} frames / \${FPS} fps / \${STEPS} steps / CFG \${CFG} / Euler + \${SCHEDULER} / shift \${FLOW_SHIFT}"
     echo "GPU: \$GPU_BACKEND"
@@ -160,7 +189,7 @@ start_server() {
         --listen-ip 127.0.0.1 \\
         --listen-port "\$PORT" \\
         --diffusion-model "\$MODEL" \\
-        --tae "\$TAE" \\
+        "\${decoder_args[@]}" \\
         --t5xxl "\$T5" \\
         "\${memory_args[@]}" \\
         --diffusion-fa \\
@@ -200,9 +229,12 @@ start_server() {
     echo "Server is still starting. Follow with: sdcpp-fastwan logs"
 }
 
-case "\${1:-server}" in
+case "\${1:-fast}" in
     server|fast)
         start_server fast
+        ;;
+    quality)
+        start_server quality
         ;;
     lowmem)
         start_server lowmem
@@ -226,16 +258,16 @@ case "\${1:-server}" in
     help|-h|--help)
         cat <<HELP
 Usage:
-  sdcpp-fastwan           # fast GPU-resident Q8 mode
-  sdcpp-fastwan lowmem    # CPU streaming fallback
+  sdcpp-fastwan           # 3-step FastWan + tiny TAE decoder
+  sdcpp-fastwan quality   # same 3-step FastWan + full Wan 2.2 VAE
+  sdcpp-fastwan lowmem    # CPU streaming fallback + TAE
   sdcpp-fastwan logs
   sdcpp-fastwan status
   sdcpp-fastwan stop
 
-Defaults are intentionally a short 832x480 / 33-frame validation clip.
-For the eventual 5-second 720p target, once the short test is clean:
-
-  S D C P P_FASTWAN_W=1280 ...
+First quality test:
+  Use the exact same prompt/input as FAST mode, but run 'sdcpp-fastwan quality'.
+  That isolates TAE vs full VAE without changing sampling.
 
 Environment overrides:
   SDCPP_FASTWAN_W
@@ -254,12 +286,12 @@ HELP
 esac
 EOF
 
-# Fix the deliberately spaced example in help so shellcheck/heredoc expansion stays simple.
-sed -i 's/S D C P P_FASTWAN_W/SDCPP_FASTWAN_W/' "$WRAPPER"
 chmod 755 "$WRAPPER"
 
 printf '\n[ OK ] FastWan installed.\n'
-printf 'Model: %s\n' "$FASTWAN_MODEL"
-printf 'TAE:   %s\n' "$FASTWAN_TAE"
-printf '\nRun:\n  sdcpp-fastwan\n\n'
-printf 'Watch progress:\n  sdcpp-fastwan logs\n'
+printf 'Model:    %s\n' "$FASTWAN_MODEL"
+printf 'TAE:      %s\n' "$FASTWAN_TAE"
+printf 'Full VAE: %s\n' "$FASTWAN_VAE"
+printf '\nRun fast mode:\n  sdcpp-fastwan\n'
+printf '\nRun quality decoder comparison:\n  sdcpp-fastwan quality\n'
+printf '\nWatch progress:\n  sdcpp-fastwan logs\n'
