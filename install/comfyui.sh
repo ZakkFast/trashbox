@@ -183,7 +183,7 @@ fi
 
 mkdir -p "$SYSTEMD_DIR"
 
-COMFY_ARGS="--enable-manager"
+COMFY_ARGS="--enable-manager --listen 0.0.0.0"
 
 if [[ "$GPU_VENDOR" == "amd" ]]; then
     COMFY_ARGS+=" --lowvram"
