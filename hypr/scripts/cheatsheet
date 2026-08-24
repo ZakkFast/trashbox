@@ -41,6 +41,7 @@ bind "SUPER + H" "This cheat sheet"
 
 section "WINDOWS"
 bind "SUPER + Q" "Close"
+bind "SUPER + M" "Hide / restore window"
 bind "SUPER + ALT + Space" "Float / tile"
 bind "SUPER + D" "Maximize"
 bind "SUPER + F" "Fullscreen"
