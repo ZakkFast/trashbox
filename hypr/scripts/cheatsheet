@@ -3,75 +3,83 @@
 set -euo pipefail
 
 if [[ "${1:-}" != "--show" ]]; then
-    exec kitty --class hypr-cheatsheet --title "Hyprland Cheat Sheet" bash "$0" --show
+    exec kitty \
+        --class hypr-cheatsheet \
+        --title "Keyboard Shortcuts" \
+        --override background_opacity=1.0 \
+        --override font_size=13.5 \
+        bash "$0" --show
 fi
 
+RESET=$'\033[0m'
+BOLD=$'\033[1m'
+DIM=$'\033[2m'
+CYAN=$'\033[1;36m'
+YELLOW=$'\033[1;33m'
+
+section() {
+    printf '\n%b%s%b\n' "$BOLD$CYAN" "$1" "$RESET"
+}
+
+bind() {
+    printf '  %b%-30s%b %s\n' "$YELLOW" "$1" "$RESET" "$2"
+}
+
 clear
-cat <<'EOF'
-HYPRLAND CHEAT SHEET
-====================
+printf '%bHYPRLAND KEYBOARD SHORTCUTS%b\n' "$BOLD" "$RESET"
+printf '%bSUPER = Windows key%b\n' "$DIM" "$RESET"
 
-APPS
-  SUPER + Enter             Terminal
-  SUPER + E                 Dolphin
-  SUPER + T                 Text editor
-  SUPER + C                 Calculator
-  SUPER + W                 Firefox
-  SUPER + ALT + W           Chromium
-  SUPER + Space             Launcher
-  SUPER + H                 This cheat sheet
+section "APPS"
+bind "SUPER + Enter" "Terminal"
+bind "SUPER + E" "Dolphin"
+bind "SUPER + W" "Firefox"
+bind "SUPER + ALT + W" "Chromium"
+bind "SUPER + T" "Text editor"
+bind "SUPER + C" "Calculator"
+bind "SUPER + Space" "App launcher"
+bind "SUPER + H" "This cheat sheet"
 
-WINDOWS
-  SUPER + Q                 Close window
-  SUPER + ALT + Space       Float / tile window
-  SUPER + D                 Maximize window
-  SUPER + F                 Fullscreen window
-  SUPER + J                 Toggle split direction
-  SUPER + Arrow             Focus window
-  SUPER + SHIFT + Arrow     Move window
-  ALT + Tab                 Cycle windows
-  SUPER + Tab               Window switcher
-  SUPER + Left Mouse        Drag window
-  SUPER + Right Mouse       Resize window
+section "WINDOWS"
+bind "SUPER + Q" "Close"
+bind "SUPER + ALT + Space" "Float / tile"
+bind "SUPER + D" "Maximize"
+bind "SUPER + F" "Fullscreen"
+bind "SUPER + Arrow" "Focus window"
+bind "SUPER + SHIFT + Arrow" "Move window"
+bind "SUPER + J" "Change split direction"
+bind "ALT + Tab" "Cycle windows"
+bind "SUPER + Tab" "Window switcher"
+bind "SUPER + Left Mouse" "Drag window"
+bind "SUPER + Right Mouse" "Resize window"
 
-WORKSPACES
-  SUPER + Numpad 1-6        Switch workspace
-  SUPER + SHIFT + Numpad 1-6
-                            Move window to workspace
-  SUPER + CTRL + Left/Right Previous / next workspace
-  SUPER + CTRL + SHIFT + Left/Right
-                            Move window to previous / next workspace
-  SUPER + S                 Toggle scratchpad
-  SUPER + SHIFT + S         Move window to scratchpad
+section "WORKSPACES"
+bind "SUPER + Numpad 1-6" "Switch workspace"
+bind "SUPER + SHIFT + Numpad 1-6" "Move window to workspace"
+bind "SUPER + CTRL + Left / Right" "Previous / next workspace"
+bind "SUPER + CTRL + SHIFT + ← / →" "Move window prev / next"
+bind "SUPER + S" "Show / hide scratchpad"
+bind "SUPER + SHIFT + S" "Send window to scratchpad"
+printf '\n  %b1 DEV   2 SERVER   3 NOT_PORN   4 GAMING   5 COMFY   6 OTHER%b\n' "$DIM" "$RESET"
 
-  1  DEV
-  2  SERVER
-  3  NOT_PORN
-  4  GAMING
-  5  COMFY
-  6  OTHER
+section "DESKTOP & TOOLS"
+bind "SUPER + L" "Lock"
+bind "SUPER + Z" "Noctalia settings"
+bind "SUPER + X" "Control center"
+bind "SUPER + V" "Clipboard history"
+bind "SUPER + A" "Notifications"
+bind "SUPER + P" "Color picker"
+bind "SUPER + SHIFT + W" "Wallpaper picker"
+bind "Print" "Region screenshot"
+bind "SUPER + Print" "Full screenshot"
+bind "F8" "Training screenshot"
 
-DESKTOP / UTILITIES
-  SUPER + Z                 Noctalia settings
-  SUPER + X                 Control center
-  SUPER + L                 Lock session
-  SUPER + V                 Clipboard history
-  SUPER + A                 Notifications
-  SUPER + P                 Color picker
-  SUPER + SHIFT + W         Wallpaper picker
-  Print                     Region screenshot
-  SUPER + Print             Full screenshot
-  F8                        Training screenshot
+section "COMFYUI"
+bind "SUPER + SHIFT + G" "Toggle ComfyUI"
+bind "SUPER + ALT + Numpad 5" "Toggle ComfyUI logs"
 
-AI / COMFYUI
-  SUPER + SHIFT + G         Toggle ComfyUI
-  SUPER + ALT + Numpad 5    Toggle ComfyUI logs
+section "ZOOM"
+bind "SUPER + - / +" "Zoom out / in"
+bind "SUPER + Numpad 0 / +" "Zoom out / in"
 
-ZOOM
-  SUPER + - / +             Zoom out / in
-  SUPER + Numpad 0 / +      Zoom out / in
-
-Press any key to close
-EOF
-
+printf '\n%bPress any key to close%b\n' "$DIM" "$RESET"
 IFS= read -rsn1 _
