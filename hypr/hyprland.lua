@@ -11,6 +11,7 @@ require("config.binds")
 require("config.misc")
 require("config.monitors")
 require("config.windowrules")
+require("config.cheatsheet")
 require("config.workspaces")
 
 -- Apply Noctalia colors when the generated theme exists
