@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ "${1:-}" != "--show" ]]; then
+    exec kitty --class hypr-cheatsheet --title "Hyprland Cheat Sheet" bash "$0" --show
+fi
+
+clear
+cat <<'EOF'
+HYPRLAND CHEAT SHEET
+====================
+
+APPS
+  SUPER + Enter             Terminal
+  SUPER + E                 Dolphin
+  SUPER + T                 Text editor
+  SUPER + C                 Calculator
+  SUPER + W                 Firefox
+  SUPER + ALT + W           Chromium
+  SUPER + Space             Launcher
+  SUPER + H                 This cheat sheet
+
+WINDOWS
+  SUPER + Q                 Close window
+  SUPER + ALT + Space       Float / tile window
+  SUPER + D                 Maximize window
+  SUPER + F                 Fullscreen window
+  SUPER + J                 Toggle split direction
+  SUPER + Arrow             Focus window
+  SUPER + SHIFT + Arrow     Move window
+  ALT + Tab                 Cycle windows
+  SUPER + Tab               Window switcher
+  SUPER + Left Mouse        Drag window
+  SUPER + Right Mouse       Resize window
+
+WORKSPACES
+  SUPER + Numpad 1-6        Switch workspace
+  SUPER + SHIFT + Numpad 1-6
+                            Move window to workspace
+  SUPER + CTRL + Left/Right Previous / next workspace
+  SUPER + CTRL + SHIFT + Left/Right
+                            Move window to previous / next workspace
+  SUPER + S                 Toggle scratchpad
+  SUPER + SHIFT + S         Move window to scratchpad
+
+  1  DEV
+  2  SERVER
+  3  NOT_PORN
+  4  GAMING
+  5  COMFY
+  6  OTHER
+
+DESKTOP / UTILITIES
+  SUPER + Z                 Noctalia settings
+  SUPER + X                 Control center
+  SUPER + L                 Lock session
+  SUPER + V                 Clipboard history
+  SUPER + A                 Notifications
+  SUPER + P                 Color picker
+  SUPER + SHIFT + W         Wallpaper picker
+  Print                     Region screenshot
+  SUPER + Print             Full screenshot
+  F8                        Training screenshot
+
+AI / COMFYUI
+  SUPER + SHIFT + G         Toggle ComfyUI
+  SUPER + ALT + Numpad 5    Toggle ComfyUI logs
+
+ZOOM
+  SUPER + - / +             Zoom out / in
+  SUPER + Numpad 0 / +      Zoom out / in
+
+Press any key to close
+EOF
+
+IFS= read -rsn1 _
