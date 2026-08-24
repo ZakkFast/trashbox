@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-
-set -euo pipefail
-
-if hyprctl workspaces -j | jq -e '.[] | select(.name == "special:hidden")' >/dev/null; then
-    hyprctl --batch 'dispatch togglespecialworkspace hidden; dispatch movetoworkspace +0' >/dev/null
-else
-    hyprctl dispatch movetoworkspacesilent special:hidden >/dev/null
-fi
