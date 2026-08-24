@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+state_dir="${XDG_RUNTIME_DIR:-/tmp}"
+state_file="$state_dir/hypr-hidden-window-${UID}"
+
+workspace_selector() {
+    local name="$1"
+
+    if [[ "$name" =~ ^[0-9]+$ ]]; then
+        printf '%s' "$name"
+    else
+        printf 'name:%s' "$name"
+    fi
+}
+
+if [[ -f "$state_file" ]]; then
+    hidden_address="$(cat "$state_file")"
+
+    if hyprctl clients -j | jq -e --arg address "$hidden_address" \
+        'any(.[]; .address == $address)' >/dev/null; then
+        current_workspace="$(hyprctl activeworkspace -j | jq -r '.name')"
+        target_workspace="$(workspace_selector "$current_workspace")"
+
+        hyprctl dispatch movetoworkspacesilent \
+            "$target_workspace,address:$hidden_address" >/dev/null
+        hyprctl dispatch focuswindow "address:$hidden_address" >/dev/null
+        rm -f "$state_file"
+        exit 0
+    fi
+
+    rm -f "$state_file"
+fi
+
+active_window="$(hyprctl activewindow -j)"
+active_address="$(jq -r '.address // empty' <<< "$active_window")"
+
+if [[ -z "$active_address" || "$active_address" == "0x" ]]; then
+    exit 0
+fi
+
+printf '%s' "$active_address" > "$state_file"
+hyprctl dispatch movetoworkspacesilent \
+    "special:hidden,address:$active_address" >/dev/null
